@@ -1,4 +1,9 @@
+# CHANGE NUMBER OF ROWS. WHY DOES THIS HAPPEN?
+# WHY IS START NODE NOT SHOWING
+
+
 from string import whitespace
+from numpy import ndenumerate
 import pygame
 import math
 from queue import PriorityQueue
@@ -62,8 +67,8 @@ class Node: # hold location of each node and its colour
     def make_barrier(self):
         self.colour = BLACK
     
-    # def make_start(self):
-    #     self.colour = ORANGE
+    def make_start(self):
+        self.colour = ORANGE
     
     def make_end(self):
         self.colour = PURPLE
@@ -73,7 +78,7 @@ class Node: # hold location of each node and its colour
     
     def draw(self, win):
         # parameters = surface, colour, Rect, position (x, y, width, length)
-        pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
+        pygame.draw.rect(win, self.colour, (self.x, self.y, self.width, self.width))
 
     def update_neighbours(self, grid):
         pass
@@ -82,4 +87,97 @@ class Node: # hold location of each node and its colour
     def __lt__(self, other): # comparing nodes
         return False
     
+def h(p1, p2): # heuristic formula - Taxicab Distance
+    x1, y1 = p1 # deconstructing the p1 object
+    x2, y2 = p2
+    return abs(x1-x2) + abs(y1-y2)
+
+
+def make_grid(rows, width): # make grid with 'rows' rows each with 'rows' columns
+    grid = []
+    gap = width // rows # note width is same as height, gives width of each node
+    for i in range(rows):
+        grid.append([]) # append row (empty list)
+        for j in range(rows): # note rows == columns
+            node = Node(i, j, gap, rows)
+            grid[i].append(node) # append Node to row i
     
+    return grid
+
+def draw_grid(win, rows, width):
+    gap = width // rows
+
+    for i in range(rows): # draw rows from x = 0 to x = width
+        pygame.draw.line(win, GREY, (0, i * gap), (width, i * gap))
+    for j in range(rows):
+        pygame.draw.line(win, GREY, (j * gap, 0), (j * gap, width))
+
+def draw(win, grid, rows, width):
+    win.fill(WHITE)
+
+    for row in grid: # grid is our 2d array of Node objects
+        for node in row:
+            node.draw(win)
+    
+    draw_grid(win, rows, width) # draw gridlines
+    pygame.display.update() # update canvas
+
+
+def get_clicked_pos(pos, rows, width): # return row and col of Node clicked on
+    gap = width // rows
+    y, x = pos
+
+    row = y // gap
+    col = x // gap
+
+    return row, col
+
+
+def main(win, width):
+    ROWS = 40
+    grid = make_grid(ROWS, width) # generate 2d list of Node objs
+
+    start = None
+    end = None
+    
+    run = True
+    started = False # whether algorithm run or not
+
+    while run:
+        draw(win, grid, ROWS, width) # draw grid with nodes
+        for event in pygame.event.get(): # loop thru all possible events
+            if event.type == pygame.QUIT: # if 'X' button clicked
+                run = False
+
+            if started: # once algorithm started, prevent user from interacting with screen
+                continue
+
+            if pygame.mouse.get_pressed()[0]: # if left mouse btn clicked
+                pos = pygame.mouse.get_pos()
+                row, col = get_clicked_pos(pos, ROWS, width)
+                node = grid[row][col] # clicked node
+
+                if not start and node != end:
+                    start = node
+                    start.make_start()
+
+                elif not end and node != start:
+                    end = node
+                    end.make_end()
+
+                elif node != end and node != start:
+                    node.make_barrier()
+
+            
+            elif pygame.mouse.get_pressed()[2]: # if right mouse btn clicked
+                pass
+    
+
+    pygame.quit()
+
+main(WIN, WIN_WIDTH)
+
+
+
+    
+
