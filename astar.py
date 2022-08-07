@@ -1,7 +1,3 @@
-# CHANGE NUMBER OF ROWS. WHY DOES THIS HAPPEN?
-# WHY IS START NODE NOT SHOWING
-
-
 from string import whitespace
 from numpy import ndenumerate
 import pygame
@@ -80,7 +76,7 @@ class Node: # hold location of each node and its colour
         # parameters = surface, colour, Rect, position (x, y, width, length)
         pygame.draw.rect(win, self.colour, (self.x, self.y, self.width, self.width))
 
-    def update_neighbours(self, grid):
+    def update_neighbours(self, grid): # list of neighbours of each node
         self.neighbours = []
 
         # first check we are not on the last playable row (as row indexing begins from 0)
@@ -114,36 +110,37 @@ def reconstruct_path(came_from, current, draw): # initally current = end node
 def algorithm(draw, grid, start, end):
     # the argument passed into 'draw' is a lambda function
     count = 0
-    open_set = PriorityQueue()
+    open_set = PriorityQueue() # data struct designed to return lowest f value (aka lowest distance to end node)
     open_set.put((0, count, start)) # g(x), count (order node added), start node
-    came_from = {}
+    came_from = {} # set of previous node that created path
 
     # convert 2d array into 1d dict with node: gscore
     g_score = {node: float("inf") for row in grid for node in row}
-    g_score[start] = 0
+    g_score[start] = 0 # as start is 0 distance from itself
 
-    f_score = {node: float("inf") for row in grid for node in row}
-    f_score[start] = h(start.get_pos(), end.get_pos()) # get Taxicab distance from curr start to end node
+    f_score = {node: float("inf") for row in grid for node in row} # set each node with f_score of infinity
+    f_score[start] = h(start.get_pos(), end.get_pos()) # get Taxicab distance from start to end node
 
-    open_set_hash = {start} # tells us which items are and are not in priority queue
+    open_set_hash = {start} # tells us which items are and are not in priority queue - as the PQ structre cant to this itself
 
-    while not open_set.empty(): # allow to exit inner algorithm
-        for event in pygame.event.get():
+    while not open_set.empty(): # allow user to exit when algorithm running
+        for event in pygame.event.get(): 
             if event.type == pygame.QUIT:
                 pygame.quit()
         
         current = open_set.get()[2] # get just the node of the lowest val f_score from set
         open_set_hash.remove(current) # synch with open set hash
 
-        if current == end: # make path
-            reconstruct_path(came_from, end, draw)
+        if current == end: # if we have reached the end node, call make path function
+            reconstruct_path(came_from, end, draw) # call make path function with last node before end
             end.make_end() # so it doesnt get coloured over.
+            start.make_start() # colour over the 'path' colour
             return True
         
         for neighbour in current.neighbours: # for each neighbour of the curr node
             temp_g_score = g_score[current]+1 # as 1 more node away from start node
             
-            if temp_g_score < g_score[neighbour]: # if new path less than infinity (or other path) for neighbour node
+            if temp_g_score < g_score[neighbour]: # if new path less than infinity (or old path) for neighbour node
                 came_from[neighbour] = current
                 g_score[neighbour] = temp_g_score # update value of better path
                 f_score[neighbour] = temp_g_score + h(neighbour.get_pos(), end.get_pos()) # g_score + h_score
@@ -155,13 +152,10 @@ def algorithm(draw, grid, start, end):
         
         draw()
  
-        if current != start: # if node we just considered is not start node, close it
+        if current != start: # if node we just considered is not start node, close it - as it has been fully explored now
             current.make_closed()
     
     return False
-
-
-
 
 
 def make_grid(rows, width): # make grid with 'rows' rows each with 'rows' columns
@@ -257,7 +251,7 @@ def main(win, width):
                     algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
 
 
-                if event.key == pygame.K_c:
+                if event.key == pygame.K_c: # reset grid if 'c' pressed
                     start = None
                     end = None
                     grid = make_grid(ROWS, width)
