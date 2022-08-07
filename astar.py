@@ -32,7 +32,7 @@ class Node: # hold location of each node and its colour
         self.x = row * width # eg row 5 * 10px tells us top left corner is 50px across
         self.y = col * width 
         self.colour = WHITE
-        self.neighbour = [] # empty set of neighbours
+        self.neighbours = [] # empty set of neighbours
         self.total_rows = total_rows # no of rows & cols on canvas  
 
     # get state
@@ -81,7 +81,20 @@ class Node: # hold location of each node and its colour
         pygame.draw.rect(win, self.colour, (self.x, self.y, self.width, self.width))
 
     def update_neighbours(self, grid):
-        pass
+        self.neighbours = []
+
+        # first check we are not on the last playable row (as row indexing begins from 0)
+        if self.row < self.total_rows - 1 and not grid[self.row+1][self.col].is_barrier(): # down a row same col
+            self.neighbours.append(grid[self.row+1][self.col])
+
+        if self.row > 0 and not grid[self.row-1][self.col].is_barrier(): # up a row same col
+            self.neighbours.append(grid[self.row-1][self.col])
+        
+        if self.col < self.total_rows -1 and not grid[self.row][self.col+1].is_barrier(): # col to the right
+            self.neighbours.append(grid[self.row][self.col+1])
+        
+        if self.col > 0 and not grid[self.row][self.col-1].is_barrier(): # col to the left
+            self.neighbours.append(grid[self.row][self.col-1])
 
     # special method overrides behaviour of < operator
     def __lt__(self, other): # comparing nodes
@@ -91,6 +104,64 @@ def h(p1, p2): # heuristic formula - Taxicab Distance
     x1, y1 = p1 # deconstructing the p1 object
     x2, y2 = p2
     return abs(x1-x2) + abs(y1-y2)
+
+def reconstruct_path(came_from, current, draw): # initally current = end node
+    while current in came_from: # new current is whatever node we came from
+        current = came_from[current]
+        current.make_path()
+        draw()
+
+def algorithm(draw, grid, start, end):
+    # the argument passed into 'draw' is a lambda function
+    count = 0
+    open_set = PriorityQueue()
+    open_set.put((0, count, start)) # g(x), count (order node added), start node
+    came_from = {}
+
+    # convert 2d array into 1d dict with node: gscore
+    g_score = {node: float("inf") for row in grid for node in row}
+    g_score[start] = 0
+
+    f_score = {node: float("inf") for row in grid for node in row}
+    f_score[start] = h(start.get_pos(), end.get_pos()) # get Taxicab distance from curr start to end node
+
+    open_set_hash = {start} # tells us which items are and are not in priority queue
+
+    while not open_set.empty(): # allow to exit inner algorithm
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+        
+        current = open_set.get()[2] # get just the node of the lowest val f_score from set
+        open_set_hash.remove(current) # synch with open set hash
+
+        if current == end: # make path
+            reconstruct_path(came_from, end, draw)
+            end.make_end() # so it doesnt get coloured over.
+            return True
+        
+        for neighbour in current.neighbours: # for each neighbour of the curr node
+            temp_g_score = g_score[current]+1 # as 1 more node away from start node
+            
+            if temp_g_score < g_score[neighbour]: # if new path less than infinity (or other path) for neighbour node
+                came_from[neighbour] = current
+                g_score[neighbour] = temp_g_score # update value of better path
+                f_score[neighbour] = temp_g_score + h(neighbour.get_pos(), end.get_pos()) # g_score + h_score
+                if neighbour not in open_set_hash:
+                    count +=1
+                    open_set.put((f_score[neighbour], count, neighbour))
+                    open_set_hash.add(neighbour)
+                    neighbour.make_open() # so we know we are considering it
+        
+        draw()
+ 
+        if current != start: # if node we just considered is not start node, close it
+            current.make_closed()
+    
+    return False
+
+
+
 
 
 def make_grid(rows, width): # make grid with 'rows' rows each with 'rows' columns
@@ -149,9 +220,6 @@ def main(win, width):
             if event.type == pygame.QUIT: # if 'X' button clicked
                 run = False
 
-            if started: # once algorithm started, prevent user from interacting with screen
-                continue
-
             if pygame.mouse.get_pressed()[0]: # if left mouse btn clicked
                 pos = pygame.mouse.get_pos()
                 row, col = get_clicked_pos(pos, ROWS, width)
@@ -170,8 +238,29 @@ def main(win, width):
 
             
             elif pygame.mouse.get_pressed()[2]: # if right mouse btn clicked
-                pass
-    
+                pos = pygame.mouse.get_pos()
+                row, col = get_clicked_pos(pos, ROWS, width)
+                node = grid[row][col]
+                node.reset()
+                if node == start:
+                    start = None
+                elif node == end:
+                    end = None
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and start and end:
+                    for row in grid:
+                        for node in row:
+                            node.update_neighbours(grid)
+                    
+                    # calling draw function in lambda argument
+                    algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+
+
+                if event.key == pygame.K_c:
+                    start = None
+                    end = None
+                    grid = make_grid(ROWS, width)
 
     pygame.quit()
 
