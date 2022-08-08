@@ -21,8 +21,9 @@ The algorithm 'decides' which node to take next by calculating **f(x)** for each
 neighbour with the smallest **f(x)** value and stores the previous node visited throughout its path. Once the end node has been visited,
 the algorithm uses its list of visited nodes to backtrack to the start node, thus creating a path between the start and end nodes.
 
-![Image of program] (../algorithm-image.png)
-
+<p align="center">
+<img src = "https://user-images.githubusercontent.com/65727348/183499115-7368ea32-9dd8-4e1b-9f06-1ce416edc119.png" width="400"/>
+</p>
 
 
 
